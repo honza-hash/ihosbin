@@ -317,6 +317,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DELETE: Delete a paste
+  app.get("/api/paste/:id/delete", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const paste = await storage.getPasteById(id);
+      
+      if (!paste) {
+        return res.status(404).json({ message: "Paste not found" });
+      }
+
+      await storage.deletePaste(id);
+      await storage.addToBlacklist(paste.content);
+      res.json({ message: "Paste deleted successfully" });
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
   // Helper function to get file extension based on syntax
   function getFileExtension(syntax: string): string {
     const extensionMap: { [key: string]: string } = {

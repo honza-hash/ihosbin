@@ -11,7 +11,9 @@ const ENABLE_WEBHOOK = true;
 export async function handleDiscordInteraction(type: number, data: any): Promise<any> {
   // Handle message component interactions (buttons, links)
   if (type === 2 || type === 3) {
-    const id = data.custom_id?.split(':')[1] || data.message?.content?.match(/\/paste\/(\d+)/)?.[1];
+    const customId = data.custom_id?.split(':')[1];
+    const urlMatch = data.message?.content?.match(/\/api\/paste\/(\d+)\/delete/)?.[1];
+    const id = customId || urlMatch;
 
     if (id) {
       const paste = await storage.getPasteById(parseInt(id));
