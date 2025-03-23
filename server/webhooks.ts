@@ -1,4 +1,5 @@
 import type { Report, Ticket, Paste } from "@shared/schema";
+import { nanoid } from "nanoid";
 
 // Discord webhook URL - nastavený na Discord kanál ihosbin.fun moderace
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || "https://discord.com/api/webhooks/1353411162825297951/blTPjUr9QKafwd0ABzaTbGMD5pQiyM5jy9LjCCo7TTdhjcCraYtbZeFefKYNdOHA1IMZ";
