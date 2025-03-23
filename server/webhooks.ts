@@ -63,7 +63,23 @@ export async function sendAbuseReport(report: Report, paste: Paste): Promise<voi
   const pasteUrl = `https://beta.ihosbin.fun/paste/${paste.shortUrl}`;
   const pasteRawUrl = `https://beta.ihosbin.fun/api/paste/${paste.shortUrl}/raw`;
   
+  // Add buttons for moderation actions
+  const components = [
+    {
+      type: 1,
+      components: [
+        {
+          type: 2,
+          style: 4, // Red color for Delete
+          custom_id: `delete_paste:${paste.id}`,
+          label: "Delete & Block"
+        }
+      ]
+    }
+  ];
+
   return sendToDiscord({
+    components,
     embeds: [
       {
         title: "⚠️ Nahlášení závadného obsahu",
