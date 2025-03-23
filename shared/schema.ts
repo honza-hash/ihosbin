@@ -43,6 +43,7 @@ export const pastes = pgTable("pastes", {
   commentsCount: integer("comments_count").default(0).notNull(),
   isPrivate: boolean("is_private").default(false).notNull(),
   shortUrl: text("short_url").notNull().unique(),
+  deleteToken: text("delete_token"),
 });
 
 export const insertPasteSchema = createInsertSchema(pastes)

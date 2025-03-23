@@ -328,7 +328,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Paste not found" });
       }
 
-      if (!paste.deleteToken || paste.deleteToken !== token) {
+      const storedToken = paste.deleteToken;
+      if (!storedToken) {
+        return res.status(403).json({ message: "No deletion token found" });
+      }
+      
+      if (token !== storedToken) {
         return res.status(403).json({ message: "Invalid deletion token" });
       }
 
