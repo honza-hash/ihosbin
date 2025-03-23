@@ -12,7 +12,7 @@ export async function handleDiscordInteraction(type: number, data: any): Promise
   // Handle message component interactions (buttons, links)
   if (type === 2 || type === 3) {
     const id = data.custom_id?.split(':')[1] || data.message?.content?.match(/\/paste\/(\d+)/)?.[1];
-    
+
     if (id) {
       const paste = await storage.getPasteById(parseInt(id));
       if (paste) {
@@ -22,7 +22,7 @@ export async function handleDiscordInteraction(type: number, data: any): Promise
       }
     }
   }
-  
+
   return { content: "❌ Neplatná akce" };
 }
 
@@ -51,7 +51,7 @@ interface WebhookPayload {
 export async function sendToDiscord(payload: WebhookPayload): Promise<void> {
   // Log the payload regardless of whether we send it
   console.log("[WEBHOOK]", JSON.stringify(payload, null, 2));
-  
+
   // Only send the actual webhook if enabled and URL is configured
   if (ENABLE_WEBHOOK && DISCORD_WEBHOOK_URL) {
     try {
@@ -82,40 +82,13 @@ export async function sendToDiscord(payload: WebhookPayload): Promise<void> {
 export async function sendAbuseReport(report: Report, paste: Paste): Promise<void> {
   const pasteUrl = `https://beta.ihosbin.fun/paste/${paste.shortUrl}`;
   const pasteRawUrl = `https://beta.ihosbin.fun/api/paste/${paste.shortUrl}/raw`;
-  
-  // Add buttons for moderation actions
-  const components = [
-    {
-      type: 1,
-      components: [
-        {
-          type: 2,
-          style: 4, // Red color for Delete
-          custom_id: `delete_paste:${paste.id}`,
-          label: "Delete & Block"
-        }
-      ]
-    }
-  ];
+  const deleteUrl = `https://beta.ihosbin.fun/api/paste/${paste.id}/delete`;
 
   return sendToDiscord({
-    components: [
-      {
-        type: 1,
-        components: [
-          {
-            type: 2,
-            style: 4,
-            custom_id: `delete_paste:${paste.id}`,
-            label: "Delete & Block"
-          }
-        ]
-      }
-    ],
     embeds: [
       {
         title: "⚠️ Nahlášení závadného obsahu",
-        description: `Byl nahlášen potenciálně závadný obsah na ihosbin.fun. Je potřeba prověřit a případně odstranit. [Zobrazit paste](${pasteUrl})`,
+        description: `Byl nahlášen potenciálně závadný obsah na ihosbin.fun. Je potřeba prověřit a případně odstranit. [Zobrazit paste](${pasteUrl}) [Odstranit](${deleteUrl})`,
         color: 16711680, // Červená
         fields: [
           {
@@ -165,7 +138,7 @@ export async function sendAbuseReport(report: Report, paste: Paste): Promise<voi
         }
       },
     ],
-    content: `⚠️ **NOVÉ NAHLÁŠENÍ:** Byl nahlášen závadný obsah - [Zobrazit](${pasteUrl}) | [Raw verze](${pasteRawUrl})`
+    content: `⚠️ **NOVÉ NAHLÁŠENÍ:** Byl nahlášen závadný obsah - [Zobrazit](${pasteUrl}) | [Raw verze](${pasteRawUrl}) | [Odstranit](${deleteUrl})`
   });
 }
 
@@ -174,7 +147,7 @@ export async function sendAbuseReport(report: Report, paste: Paste): Promise<voi
  */
 export async function sendSupportTicket(ticket: Ticket): Promise<void> {
   const supportUrl = "https://beta.ihosbin.fun/support";
-  
+
   return sendToDiscord({
     embeds: [
       {
