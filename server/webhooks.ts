@@ -2,9 +2,28 @@ import type { Report, Ticket, Paste } from "@shared/schema";
 
 // Discord webhook URL - nastavený na Discord kanál ihosbin.fun moderace
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || "https://discord.com/api/webhooks/1353411162825297951/blTPjUr9QKafwd0ABzaTbGMD5pQiyM5jy9LjCCo7TTdhjcCraYtbZeFefKYNdOHA1IMZ";
+const DISCORD_PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY || "YOUR_PUBLIC_KEY"; // Replace with your Discord public key
 
 // Vždy povolíme webhooks, bez ohledu na produkční nebo vývojové prostředí
 const ENABLE_WEBHOOK = true;
+
+// Function to handle Discord interactions
+export async function handleDiscordInteraction(type: number, data: any): Promise<any> {
+  if (type === 3) { // Button interaction
+    const [action, id] = data.custom_id.split(':');
+    
+    if (action === 'delete_paste') {
+      const paste = await storage.getPasteById(parseInt(id));
+      if (paste) {
+        await storage.deletePaste(parseInt(id));
+        await storage.addToBlacklist(paste.content);
+        return { content: `✅ Paste ${id} deleted and content blacklisted` };
+      }
+    }
+  }
+  
+  return { content: "❌ Invalid action" };
+}
 
 interface WebhookPayload {
   content?: string;

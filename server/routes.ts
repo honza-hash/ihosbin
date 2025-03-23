@@ -224,25 +224,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/webhook/discord", async (req: Request, res: Response) => {
     try {
       const { type, data } = req.body;
-      
-      if (type === 2) { // Button interaction
-        const [action, id] = data.custom_id.split(':');
-        
-        if (action === 'delete_paste') {
-          // Delete paste and create blacklist entry
-          const paste = await storage.getPasteById(parseInt(id));
-          if (paste) {
-            await storage.deletePaste(parseInt(id));
-            await storage.addToBlacklist(paste.content);
-            return res.json({ 
-              type: 4,
-              data: { content: `✅ Paste ${id} deleted and content blacklisted` }
-            });
-          }
-        }
-      }
-      
-      res.json({ type: 4, data: { content: "❌ Invalid action" } });
+      const response = await handleDiscordInteraction(type, data);
+      res.json({ type: 4, data: response });
     } catch (err) {
       handleError(err, res);
     }
