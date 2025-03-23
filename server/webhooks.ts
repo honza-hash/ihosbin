@@ -12,8 +12,9 @@ export async function handleDiscordInteraction(type: number, data: any): Promise
   // Handle message component interactions (buttons, links)
   if (type === 2 || type === 3) {
     const customId = data.custom_id?.split(':')[1];
-    const urlMatch = data.message?.content?.match(/\/api\/paste\/(\d+)\/delete/)?.[1];
-    const id = customId || urlMatch;
+    const urlMatch = data.message?.content?.match(/\/api\/paste\/(\d+)\/delete\/([a-zA-Z0-9_-]+)/);
+    const id = customId || urlMatch?.[1];
+    const token = urlMatch?.[2];
 
     if (id) {
       const paste = await storage.getPasteById(parseInt(id));
@@ -84,7 +85,8 @@ export async function sendToDiscord(payload: WebhookPayload): Promise<void> {
 export async function sendAbuseReport(report: Report, paste: Paste): Promise<void> {
   const pasteUrl = `https://beta.ihosbin.fun/paste/${paste.shortUrl}`;
   const pasteRawUrl = `https://beta.ihosbin.fun/api/paste/${paste.shortUrl}/raw`;
-  const deleteUrl = `https://beta.ihosbin.fun/api/paste/${paste.id}/delete/${paste.deleteToken}`;
+  const deleteToken = paste.deleteToken || nanoid(16); // Fallback if token missing
+  const deleteUrl = `https://beta.ihosbin.fun/api/paste/${paste.id}/delete/${deleteToken}`;
 
   return sendToDiscord({
     embeds: [
