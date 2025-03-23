@@ -11,6 +11,7 @@ import Api from "@/pages/api";
 import Support from "@/pages/support";
 import About from "@/pages/about";
 import Terms from "@/pages/terms";
+import AllPastes from "@/pages/AllPastes";
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/paste/:id" component={Paste} />
       <Route path="/trending" component={Trending} />
+      <Route path="/pastes" component={AllPastes} />
       <Route path="/api" component={Api} />
       <Route path="/support" component={Support} />
       <Route path="/about" component={About} />
