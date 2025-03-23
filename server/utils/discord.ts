@@ -69,5 +69,5 @@ async function sendToDiscord(content: string): Promise<void> {
  * Get the full URL for a paste
  */
 function getFullPasteUrl(pasteId: number): string {
-  return `${process.env.PUBLIC_URL || 'https://ihosbin.fun'}/paste/${pasteId}`;
+  return `${process.env.PUBLIC_URL || 'https://beta.ihosbin.fun'}/paste/${pasteId}`;
 }

@@ -27,7 +27,7 @@ export default function Api() {
   return (
     <div className="py-8">
       <h1 className="text-3xl font-bold mb-6">API Documentation</h1>
-      
+
       {/* API Stats Display */}
       <div className="bg-slate-800 rounded-lg overflow-hidden shadow-lg mb-8">
         <div className="p-4 border-b border-slate-700">
@@ -65,7 +65,7 @@ export default function Api() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Most Used Languages</h3>
                   <div className="bg-slate-700 p-4 rounded-lg">
@@ -84,7 +84,7 @@ export default function Api() {
                   </div>
                 </div>
               </div>
-              
+
               <div>
                 <div className="mb-4">
                   <h3 className="text-lg font-semibold mb-2">API Information</h3>
@@ -103,7 +103,7 @@ export default function Api() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Expiration Distribution</h3>
                   <div className="bg-slate-700 p-4 rounded-lg">
@@ -126,15 +126,15 @@ export default function Api() {
           ) : null}
         </div>
       </div>
-      
-      
+
+
       <div className="bg-slate-800 rounded-lg overflow-hidden shadow-lg mb-8">
         <div className="p-4 border-b border-slate-700">
           <h2 className="text-xl font-bold">Introduction</h2>
         </div>
         <div className="p-6">
           <p className="mb-4 text-slate-300">
-            ihosbin.fun provides a simple RESTful API that allows you to programmatically create and retrieve pastes.
+            beta.ihosbin.fun provides a simple RESTful API that allows you to programmatically create and retrieve pastes.
             No API key or authentication is required.
           </p>
           <p className="mb-4 text-slate-300">
@@ -142,11 +142,11 @@ export default function Api() {
             Errors will include a meaningful message to help you debug issues.
           </p>
           <p className="text-slate-300">
-            Base URL: <code className="bg-slate-700 px-2 py-1 rounded">https://ihosbin.fun/api</code>
+            Base URL: <code className="bg-slate-700 px-2 py-1 rounded">https://beta.ihosbin.fun/api</code>
           </p>
         </div>
       </div>
-      
+
       <div className="bg-slate-800 rounded-lg overflow-hidden shadow-lg mb-8">
         <div className="p-4 border-b border-slate-700">
           <h2 className="text-xl font-bold">Create a new paste</h2>
@@ -156,7 +156,7 @@ export default function Api() {
             <span className="bg-green-600 text-white px-2 py-1 rounded mr-3 font-mono text-sm">POST</span>
             <code className="font-mono">/paste</code>
           </div>
-          
+
           <h3 className="text-lg font-semibold mb-3">Request Body</h3>
           <pre className="bg-slate-900 p-4 rounded mb-4 overflow-x-auto">
             <code>{`{
@@ -167,17 +167,17 @@ export default function Api() {
   "isPrivate": false  // Optional, default: false
 }`}</code>
           </pre>
-          
+
           <h4 className="font-semibold mb-2">Available syntax options:</h4>
           <p className="mb-4 text-slate-300">
             plaintext, javascript, typescript, python, java, csharp, html, css, php, ruby, go, rust, c, cpp, shell, sql, json, yaml, markdown, xml
           </p>
-          
+
           <h4 className="font-semibold mb-2">Available expiration options:</h4>
           <p className="mb-4 text-slate-300">
             never, 10m, 1h, 1d, 1w, 1m, 1y
           </p>
-          
+
           <h3 className="text-lg font-semibold mt-6 mb-3">Response</h3>
           <pre className="bg-slate-900 p-4 rounded overflow-x-auto">
             <code>{`{
@@ -195,21 +195,21 @@ export default function Api() {
   "shortUrl": "abc12345"
 }`}</code>
           </pre>
-          
+
           <h3 className="text-lg font-semibold mt-6 mb-3">Example</h3>
           <pre className="bg-slate-900 p-4 rounded overflow-x-auto">
-            <code>{`curl -X POST https://ihosbin.fun/api/paste \\
+            <code>{`curl -X POST https://beta.ihosbin.fun/api/paste \\
   -H "Content-Type: application/json" \\
   -d '{
-    "content": "console.log(\\"Hello World!\\");",
+    "content": "console.log('Hello from Ihos Cloud!');",
     "syntax": "javascript",
-    "title": "Hello World",
+    "title": "Ihos Cloud Example",
     "expiration": "1d"
   }'`}</code>
           </pre>
         </div>
       </div>
-      
+
       <div className="bg-slate-800 rounded-lg overflow-hidden shadow-lg mb-8">
         <div className="p-4 border-b border-slate-700">
           <h2 className="text-xl font-bold">Get a paste</h2>
@@ -219,11 +219,11 @@ export default function Api() {
             <span className="bg-blue-600 text-white px-2 py-1 rounded mr-3 font-mono text-sm">GET</span>
             <code className="font-mono">/paste/{'{id}'}</code>
           </div>
-          
+
           <p className="mb-4 text-slate-300">
             Retrieves a paste by its ID or short URL. This will increment the view counter.
           </p>
-          
+
           <h3 className="text-lg font-semibold mt-6 mb-3">Response</h3>
           <pre className="bg-slate-900 p-4 rounded overflow-x-auto">
             <code>{`{
@@ -241,14 +241,14 @@ export default function Api() {
   "shortUrl": "abc12345"
 }`}</code>
           </pre>
-          
+
           <h3 className="text-lg font-semibold mt-6 mb-3">Example</h3>
           <pre className="bg-slate-900 p-4 rounded overflow-x-auto">
-            <code>{`curl https://ihosbin.fun/api/paste/abc12345`}</code>
+            <code>{`curl https://beta.ihosbin.fun/api/paste/abc12345`}</code>
           </pre>
         </div>
       </div>
-      
+
       <div className="bg-slate-800 rounded-lg overflow-hidden shadow-lg mb-8">
         <div className="p-4 border-b border-slate-700">
           <h2 className="text-xl font-bold">Raw and Download</h2>
@@ -263,7 +263,7 @@ export default function Api() {
               Returns the raw content of the paste with appropriate content type headers.
             </p>
           </div>
-          
+
           <div>
             <div className="flex items-center mb-4">
               <span className="bg-blue-600 text-white px-2 py-1 rounded mr-3 font-mono text-sm">GET</span>
@@ -275,7 +275,7 @@ export default function Api() {
           </div>
         </div>
       </div>
-      
+
       <div className="bg-slate-800 rounded-lg overflow-hidden shadow-lg mb-8">
         <div className="p-4 border-b border-slate-700">
           <h2 className="text-xl font-bold">Other Endpoints</h2>
@@ -294,7 +294,7 @@ export default function Api() {
               <li><code className="bg-slate-700 px-1 rounded">period</code>: Time period - today, week, month, all (default: week)</li>
             </ul>
           </div>
-          
+
           <div className="mb-6">
             <div className="flex items-center mb-4">
               <span className="bg-blue-600 text-white px-2 py-1 rounded mr-3 font-mono text-sm">GET</span>
@@ -307,7 +307,7 @@ export default function Api() {
               <li><code className="bg-slate-700 px-1 rounded">limit</code>: Number of pastes to return (default: 10)</li>
             </ul>
           </div>
-          
+
           <div className="mb-6">
             <div className="flex items-center mb-4">
               <span className="bg-post-600 text-white px-2 py-1 rounded mr-3 font-mono text-sm">POST</span>
@@ -317,7 +317,7 @@ export default function Api() {
               Increments the like counter for a paste.
             </p>
           </div>
-          
+
           <div className="mb-6">
             <div className="flex items-center mb-4">
               <span className="bg-blue-600 text-white px-2 py-1 rounded mr-3 font-mono text-sm">GET</span>
@@ -327,7 +327,7 @@ export default function Api() {
               Get comments for a paste.
             </p>
           </div>
-          
+
           <div>
             <div className="flex items-center mb-4">
               <span className="bg-green-600 text-white px-2 py-1 rounded mr-3 font-mono text-sm">POST</span>
