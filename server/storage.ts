@@ -35,6 +35,17 @@ export interface IStorage {
   createTicket(ticket: InsertTicket): Promise<Ticket>;
   getTickets(resolved?: boolean): Promise<Ticket[]>;
   resolveTicket(id: number): Promise<void>;
+  
+  // Statistics methods
+  getStatistics(): Promise<{
+    totalPastes: number;
+    totalComments: number;
+    totalReports: number;
+    totalTickets: number;
+    topLanguages: Array<{ language: string; count: number }>;
+    pastesLast24Hours: number;
+    pastesByExpirationTime: Array<{ expiration: string; count: number }>;
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -52,6 +63,72 @@ export class DatabaseStorage implements IStorage {
   async createUser(user: InsertUser): Promise<User> {
     const [newUser] = await db.insert(users).values(user).returning();
     return newUser;
+  }
+  
+  // Statistics method
+  async getStatistics() {
+    // Get total pastes count
+    const [pastesResult] = await db.select({ count: sqlBuilder<number>`count(*)` }).from(pastes);
+    const totalPastes = pastesResult?.count || 0;
+    
+    // Get total comments count
+    const [commentsResult] = await db.select({ count: sqlBuilder<number>`count(*)` }).from(comments);
+    const totalComments = commentsResult?.count || 0;
+    
+    // Get total reports count
+    const [reportsResult] = await db.select({ count: sqlBuilder<number>`count(*)` }).from(reports);
+    const totalReports = reportsResult?.count || 0;
+    
+    // Get total tickets count
+    const [ticketsResult] = await db.select({ count: sqlBuilder<number>`count(*)` }).from(tickets);
+    const totalTickets = ticketsResult?.count || 0;
+    
+    // Get pastes created in the last 24 hours
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+    const [recentPastesResult] = await db.select({ count: sqlBuilder<number>`count(*)` })
+      .from(pastes)
+      .where(gte(pastes.createdAt, oneDayAgo));
+    const pastesLast24Hours = recentPastesResult?.count || 0;
+    
+    // Get top languages
+    const topLanguagesResult = await db.select({
+      language: pastes.syntax,
+      count: sqlBuilder<number>`count(*)`
+    })
+    .from(pastes)
+    .groupBy(pastes.syntax)
+    .orderBy(desc(sqlBuilder`count(*)`))
+    .limit(5);
+    
+    const topLanguages = topLanguagesResult.map(row => ({
+      language: row.language,
+      count: row.count
+    }));
+    
+    // Get pastes by expiration time
+    const expirationTimesResult = await db.select({
+      expiration: pastes.expiration,
+      count: sqlBuilder<number>`count(*)`
+    })
+    .from(pastes)
+    .groupBy(pastes.expiration)
+    .orderBy(desc(sqlBuilder`count(*)`));
+    
+    const pastesByExpirationTime = expirationTimesResult.map(row => ({
+      expiration: row.expiration,
+      count: row.count
+    }));
+    
+    return {
+      totalPastes,
+      totalComments,
+      totalReports,
+      totalTickets,
+      topLanguages,
+      pastesLast24Hours,
+      pastesByExpirationTime
+    };
   }
   
   // Paste methods

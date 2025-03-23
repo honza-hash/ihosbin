@@ -26,6 +26,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.status(500).json({ message: 'Internal server error' });
   };
 
+  // GET: API Info and Statistics
+  app.get("/api/info", async (_req: Request, res: Response) => {
+    try {
+      // Get statistics from storage
+      const stats = await storage.getStatistics();
+      
+      // Return API information with statistics
+      res.json({
+        name: "ihosbin.fun API",
+        version: "1.0.0-beta",
+        status: "operational",
+        baseUrl: "https://beta.ihosbin.fun/api",
+        statistics: stats,
+        endpoints: [
+          { path: "/api/trending", description: "Get trending pastes" },
+          { path: "/api/latest", description: "Get latest pastes" },
+          { path: "/api/paste/:id", description: "Get paste by ID or short URL" },
+          { path: "/api/paste/:id/raw", description: "Get raw paste content" },
+          { path: "/api/paste/:id/download", description: "Download paste" },
+          { path: "/api/paste/:id/comments", description: "Get paste comments" },
+          { path: "/api/paste/:id/like", description: "Like a paste" },
+          { path: "/api/info", description: "Get API information and statistics" }
+        ]
+      });
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
   // GET: Get trending pastes
   app.get("/api/trending", async (req: Request, res: Response) => {
     try {

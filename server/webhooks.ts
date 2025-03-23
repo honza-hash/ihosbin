@@ -125,28 +125,40 @@ export async function sendAbuseReport(report: Report, paste: Paste): Promise<voi
  * Send support ticket to Discord
  */
 export async function sendSupportTicket(ticket: Ticket): Promise<void> {
+  const supportUrl = "https://beta.ihosbin.fun/support";
+  
   return sendToDiscord({
     embeds: [
       {
-        title: "🎫 Support Ticket",
-        color: 3447003, // Blue
+        title: "🎫 Nový tiket podpory",
+        description: `Uživatel odeslal nový požadavek na podporu, který vyžaduje reakci moderátora. [Přejít na stránku podpory](${supportUrl})`,
+        color: 3447003, // Modrá
         fields: [
           {
-            name: "Subject",
-            value: ticket.subject,
+            name: "📋 Předmět",
+            value: ticket.subject || "Neposkytnut",
           },
           {
-            name: "Email",
-            value: ticket.email || "Anonymous",
+            name: "📧 Email",
+            value: ticket.email || "Anonymní uživatel",
             inline: true,
           },
           {
-            name: "Message",
-            value: ticket.message,
+            name: "⏱️ Vytvořeno",
+            value: new Date(ticket.createdAt).toLocaleString(),
+            inline: true,
+          },
+          {
+            name: "📝 Zpráva",
+            value: "```" + ticket.message + "```",
           },
         ],
         timestamp: new Date().toISOString(),
+        footer: {
+          text: "ihosbin.fun | Systém podpory"
+        }
       },
     ],
+    content: `📨 **NOVÝ TIKET PODPORY:** Prosím, zpracujte tento požadavek co nejdříve.`
   });
 }
