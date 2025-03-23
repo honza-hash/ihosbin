@@ -220,6 +220,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST: Handle Discord webhook interactions
+  app.post("/api/webhook/discord", async (req: Request, res: Response) => {
+    try {
+      const { type, data } = req.body;
+      
+      if (type === 2) { // Button interaction
+        const [action, id] = data.custom_id.split(':');
+        
+        if (action === 'delete_paste') {
+          // Delete paste and create blacklist entry
+          const paste = await storage.getPasteById(parseInt(id));
+          if (paste) {
+            await storage.deletePaste(parseInt(id));
+            await storage.addToBlacklist(paste.content);
+            return res.json({ 
+              type: 4,
+              data: { content: `✅ Paste ${id} deleted and content blacklisted` }
+            });
+          }
+        }
+      }
+      
+      res.json({ type: 4, data: { content: "❌ Invalid action" } });
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
   // GET: Get comments for a paste
   app.get("/api/paste/:id/comments", async (req: Request, res: Response) => {
     try {

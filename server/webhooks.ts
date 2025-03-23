@@ -79,7 +79,19 @@ export async function sendAbuseReport(report: Report, paste: Paste): Promise<voi
   ];
 
   return sendToDiscord({
-    components,
+    components: [
+      {
+        type: 1,
+        components: [
+          {
+            type: 2,
+            style: 4,
+            custom_id: `delete_paste:${paste.id}`,
+            label: "Delete & Block"
+          }
+        ]
+      }
+    ],
     embeds: [
       {
         title: "⚠️ Nahlášení závadného obsahu",
