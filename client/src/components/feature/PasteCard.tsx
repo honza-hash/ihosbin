@@ -61,31 +61,45 @@ export default function PasteCard({ paste }: PasteCardProps) {
   
   return (
     <>
-      <div className="bg-slate-800 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
-        <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+      <div className="bg-gradient-to-b from-slate-800 to-slate-850 rounded-lg overflow-hidden shadow-xl hover:shadow-emerald-900/20 transition-all border border-slate-700 hover:border-slate-600">
+        <div className="p-4 border-b border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
-            <h3 className="font-medium text-lg">{paste.title || "Untitled"}</h3>
-            <div className="flex items-center space-x-3 text-sm text-slate-400">
-              <span>{formatDistanceToNow(new Date(paste.createdAt), { addSuffix: true })}</span>
-              <span className="flex items-center"><Code className="mr-1 h-4 w-4" /> {paste.syntax}</span>
-              <span className="flex items-center"><Eye className="mr-1 h-4 w-4" /> {paste.views}</span>
+            <h3 className="font-bold text-lg bg-gradient-to-r from-teal-400 to-emerald-500 text-transparent bg-clip-text">
+              {paste.title || "Untitled"}
+            </h3>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400 mt-2">
+              <span className="flex items-center">
+                <svg className="w-4 h-4 mr-1 text-teal-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <path d="M12 6v6l4 2"></path>
+                </svg>
+                {formatDistanceToNow(new Date(paste.createdAt), { addSuffix: true })}
+              </span>
+              <span className="flex items-center">
+                <Code className="mr-1 h-4 w-4 text-emerald-400" /> 
+                <span className="capitalize">{paste.syntax}</span>
+              </span>
+              <span className="flex items-center">
+                <Eye className="mr-1 h-4 w-4 text-emerald-400" /> {paste.views}
+              </span>
             </div>
           </div>
-          <div className="flex space-x-1">
+          <div className="flex gap-2">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={handleLike}
               disabled={likeMutation.isPending}
-              className="text-slate-400 hover:text-white"
+              className="bg-slate-800/50 border-slate-700 hover:border-emerald-500 hover:text-emerald-400 transition-colors"
               title="Like"
             >
-              <Heart className="mr-1 h-4 w-4" /> {paste.likes}
+              <Heart className={`mr-1 h-4 w-4 ${paste.likes > 0 ? 'text-rose-500 fill-rose-500' : ''}`} /> 
+              {paste.likes}
             </Button>
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="text-slate-400 hover:text-white"
+              className="bg-slate-800/50 border-slate-700 hover:border-emerald-500 hover:text-emerald-400 transition-colors"
               title="Comments"
               asChild
             >
@@ -97,25 +111,35 @@ export default function PasteCard({ paste }: PasteCardProps) {
         </div>
         
         <Link href={`/paste/${paste.shortUrl}`}>
-          <div className="relative overflow-hidden max-h-[220px]">
+          <div className="relative overflow-hidden max-h-[220px] group">
             <CodeBlock code={paste.content} language={paste.syntax} preview />
-            <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-slate-800 to-transparent"></div>
+            <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-slate-900 to-transparent"></div>
+            <div className="absolute inset-0 bg-emerald-500/0 group-hover:bg-emerald-500/5 transition-colors duration-300"></div>
           </div>
         </Link>
         
-        <div className="p-3 border-t border-slate-700 flex justify-between">
-          <div className="flex space-x-2">
-            <a href={`/api/paste/${paste.shortUrl}/raw`} target="_blank" className="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded transition-colors">
-              Raw
+        <div className="p-3 border-t border-slate-700 bg-slate-800/30 flex flex-wrap justify-between gap-2">
+          <div className="flex flex-wrap gap-2">
+            <a 
+              href={`/api/paste/${paste.shortUrl}/raw`} 
+              target="_blank" 
+              onClick={(e) => e.stopPropagation()}
+              className="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded-md transition-colors flex items-center border border-slate-700 hover:border-slate-600 hover:text-emerald-400"
+            >
+              <Code className="mr-1 h-3 w-3" /> Raw
             </a>
-            <a href={`/api/paste/${paste.shortUrl}/download`} className="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded transition-colors flex items-center">
+            <a 
+              href={`/api/paste/${paste.shortUrl}/download`} 
+              onClick={(e) => e.stopPropagation()}
+              className="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded-md transition-colors flex items-center border border-slate-700 hover:border-slate-600 hover:text-emerald-400"
+            >
               <Download className="mr-1 h-3 w-3" /> Download
             </a>
             <Button 
-              variant="ghost" 
+              variant="outline" 
               size="sm"
               onClick={handleCopy}
-              className="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 h-auto rounded"
+              className="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 h-auto rounded-md border-slate-700 hover:border-slate-600 hover:text-emerald-400"
             >
               <Copy className="mr-1 h-3 w-3" /> Copy
             </Button>
