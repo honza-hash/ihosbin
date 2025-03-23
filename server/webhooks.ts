@@ -1,7 +1,10 @@
 import type { Report, Ticket, Paste } from "@shared/schema";
 
 // Discord webhook URL
-const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1353411162825297951/blTPjUr9QKafwd0ABzaTbGMD5pQiyM5jy9LjCCo7TTdhjcCraYtbZeFefKYNdOHA1IMZ";
+const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || ""; // Get webhook URL from env
+
+// Flag to enable/disable actual webhook sending (for development/testing)
+const ENABLE_WEBHOOK = process.env.NODE_ENV === 'production';
 
 interface WebhookPayload {
   content?: string;
@@ -15,6 +18,10 @@ interface WebhookPayload {
       inline?: boolean;
     }>;
     timestamp?: string;
+    footer?: {
+      text: string;
+      icon_url?: string;
+    };
   }>;
 }
 
@@ -22,20 +29,30 @@ interface WebhookPayload {
  * Send message to Discord webhook
  */
 export async function sendToDiscord(payload: WebhookPayload): Promise<void> {
-  try {
-    const response = await fetch(DISCORD_WEBHOOK_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+  // Log the payload regardless of whether we send it
+  console.log("[WEBHOOK]", JSON.stringify(payload, null, 2));
+  
+  // Only send the actual webhook if enabled and URL is configured
+  if (ENABLE_WEBHOOK && DISCORD_WEBHOOK_URL) {
+    try {
+      const response = await fetch(DISCORD_WEBHOOK_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-    if (!response.ok) {
-      console.error("Failed to send webhook:", await response.text());
+      if (!response.ok) {
+        console.error("Failed to send webhook:", await response.text());
+      } else {
+        console.log("✅ Webhook sent successfully");
+      }
+    } catch (error) {
+      console.error("Error sending webhook:", error);
     }
-  } catch (error) {
-    console.error("Error sending webhook:", error);
+  } else {
+    console.log("⚠️ Webhook sending is disabled or URL not configured");
   }
 }
 

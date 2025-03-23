@@ -85,7 +85,20 @@ export const CodeBlock = ({ code, language, preview }: CodeBlockProps) => {
           const xml = await import('highlight.js/lib/languages/xml');
           hljs.default.registerLanguage('xml', xml.default);
           break;
-        // Default or plaintext doesn't need special highlighting
+        case 'plaintext':
+          // Register a simple plaintext language to avoid warnings
+          hljs.default.registerLanguage('plaintext', () => ({
+            name: 'plaintext',
+            contains: []
+          }));
+          break;
+        // Default fallback to plaintext
+        default:
+          hljs.default.registerLanguage('plaintext', () => ({
+            name: 'plaintext',
+            contains: []
+          }));
+          break;
       }
       
       // Import CSS for highlighting
