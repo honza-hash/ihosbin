@@ -9,10 +9,11 @@ const ENABLE_WEBHOOK = true;
 
 // Function to handle Discord interactions
 export async function handleDiscordInteraction(type: number, data: any): Promise<any> {
-  if (type === 2) { // Button interaction
-    const [action, id] = data.custom_id.split(':');
+  // Handle message component interactions (buttons, links)
+  if (type === 2 || type === 3) {
+    const id = data.custom_id?.split(':')[1] || data.message?.content?.match(/\/paste\/(\d+)/)?.[1];
     
-    if (action === 'delete_paste') {
+    if (id) {
       const paste = await storage.getPasteById(parseInt(id));
       if (paste) {
         await storage.deletePaste(parseInt(id));
