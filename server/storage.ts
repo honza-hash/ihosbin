@@ -3,7 +3,7 @@ import { pastes, comments, reports, tickets, users,
   type Comment, type InsertComment, type Report, type InsertReport, 
   type Ticket, type InsertTicket } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql as sqlBuilder, and, isNull, lte, gte } from "drizzle-orm";
+import { eq, desc, sql as sqlBuilder, and, isNull, lte, gte, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 export interface IStorage {
@@ -220,11 +220,6 @@ export class DatabaseStorage implements IStorage {
       .set({ resolved: true })
       .where(eq(tickets.id, id));
   }
-}
-
-// Fix for missing 'or' function
-function or(...conditions: unknown[]) {
-  return sqlBuilder.raw(`(${conditions.map(() => '??').join(' OR ')})`, ...conditions);
 }
 
 export const storage = new DatabaseStorage();

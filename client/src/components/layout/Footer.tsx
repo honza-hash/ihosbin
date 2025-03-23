@@ -16,6 +16,7 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               <li><Link href="/" className="text-slate-400 hover:text-white transition-colors">Home</Link></li>
               <li><Link href="/#new-paste" className="text-slate-400 hover:text-white transition-colors">Create Paste</Link></li>
+              <li><Link href="/pastes" className="text-slate-400 hover:text-white transition-colors">All Pastes</Link></li>
               <li><Link href="/trending" className="text-slate-400 hover:text-white transition-colors">Trending</Link></li>
               <li><Link href="/api" className="text-slate-400 hover:text-white transition-colors">API</Link></li>
             </ul>
@@ -42,7 +43,11 @@ export default function Footer() {
         </div>
         
         <div className="mt-8 pt-8 border-t border-slate-700 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-slate-500 text-sm">© {new Date().getFullYear()} ihosbin.fun. We don't collect or sell your data.</p>
+          <div className="flex flex-col items-center md:items-start space-y-2">
+            <p className="text-slate-500 text-sm">© 2025 ihosbin.fun. We don't collect or sell your data.</p>
+            <p className="text-slate-600 text-xs">Powered by <span className="text-primary">Ihos Cloud Global Network</span></p>
+            <p className="text-slate-600 text-xs">Available at <a href="https://beta.ihosbin.fun" className="text-cyan-400 hover:underline">beta.ihosbin.fun</a></p>
+          </div>
           <div className="flex space-x-4 mt-4 md:mt-0">
             <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-white transition-colors">
               <Github className="h-5 w-5" />

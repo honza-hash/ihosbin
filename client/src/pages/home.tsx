@@ -8,11 +8,19 @@ export default function Home() {
     <>
       {/* Hero Section */}
       <section id="hero" className="py-12 md:py-20 text-center">
-        <h1 className="text-4xl md:text-6xl font-bold mb-4">
-          Modern, <span className="text-primary">Anonymous</span> Paste Service
-        </h1>
+        <div className="flex flex-col items-center">
+          <h1 className="text-4xl md:text-6xl font-bold mb-2">
+            Modern, <span className="text-primary">Anonymous</span> Paste Service
+          </h1>
+          <div className="bg-primary/20 text-primary text-sm font-medium py-1 px-3 rounded-full mb-4">
+            BETA
+          </div>
+        </div>
         <p className="text-xl text-slate-300 mb-8 max-w-2xl mx-auto">
-          Share your code securely without registration. We don't track or sell your data.
+          Share your code securely without registration. Available at <a href="https://beta.ihosbin.fun" className="text-cyan-400 hover:underline">beta.ihosbin.fun</a>
+        </p>
+        <p className="text-sm text-slate-400 mb-8 max-w-2xl mx-auto">
+          Powered by <span className="text-primary">Ihos Cloud Global Network</span>
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-4">
           <Link href="#new-paste">
@@ -20,9 +28,9 @@ export default function Home() {
               Create New Paste
             </Button>
           </Link>
-          <Link href="/api">
+          <Link href="/pastes">
             <Button variant="outline" className="border border-slate-600 hover:border-slate-500 text-slate-300 hover:text-white font-bold py-3 px-8 h-auto">
-              API Documentation
+              Browse All Pastes
             </Button>
           </Link>
         </div>
@@ -77,32 +85,32 @@ export default function Home() {
 
       {/* API Section */}
       <section id="api" className="py-10 border-t border-slate-800">
-        <h2 className="text-2xl font-bold mb-6">API Access</h2>
+        <h2 className="text-2xl font-bold mb-6">Open API Access</h2>
         
         <div className="bg-slate-800 rounded-lg overflow-hidden shadow-lg">
           <div className="p-4 border-b border-slate-700">
-            <h3 className="font-bold text-lg">Anonymous API</h3>
-            <p className="text-slate-300 text-sm">Create and retrieve pastes programmatically without any API key.</p>
+            <h3 className="font-bold text-lg">Developer-Friendly API</h3>
+            <p className="text-slate-300 text-sm">Create and retrieve pastes programmatically. No API key required.</p>
           </div>
           
           <div className="p-4">
             <h4 className="font-medium mb-2">Create a new paste</h4>
-            <pre className="language-bash p-4 bg-slate-900 rounded"><code>{`curl -X POST https://ihosbin.fun/api/paste \\
+            <pre className="language-bash p-4 bg-slate-900 rounded"><code>{`curl -X POST https://beta.ihosbin.fun/api/paste \\
   -H "Content-Type: application/json" \\
   -d '{
-    "content": "Your paste content here",
+    "content": "console.log('Hello from Ihos Cloud!');",
     "syntax": "javascript",
-    "title": "Optional title",
+    "title": "Ihos Cloud Example",
     "expiration": "1d"
   }'`}</code></pre>
             
-            <h4 className="font-medium mt-6 mb-2">Get a paste by ID</h4>
-            <pre className="language-bash p-4 bg-slate-900 rounded"><code>{`curl https://ihosbin.fun/api/paste/{paste_id}`}</code></pre>
+            <h4 className="font-medium mt-6 mb-2">Access paste content</h4>
+            <pre className="language-bash p-4 bg-slate-900 rounded"><code>{`curl https://beta.ihosbin.fun/api/paste/{shortUrl}`}</code></pre>
             
             <div className="mt-6 text-center">
               <Link href="/api">
                 <Button variant="link" className="text-primary hover:text-primary/90 font-medium">
-                  View Full API Documentation
+                  View Complete API Documentation
                 </Button>
               </Link>
             </div>
