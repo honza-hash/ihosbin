@@ -318,13 +318,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE: Delete a paste
-  app.get("/api/paste/:id/delete", async (req: Request, res: Response) => {
+  app.get("/api/paste/:id/delete/:token", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      const token = req.params.token;
       const paste = await storage.getPasteById(id);
       
       if (!paste) {
         return res.status(404).json({ message: "Paste not found" });
+      }
+
+      if (!paste.deleteToken || paste.deleteToken !== token) {
+        return res.status(403).json({ message: "Invalid deletion token" });
       }
 
       await storage.deletePaste(id);

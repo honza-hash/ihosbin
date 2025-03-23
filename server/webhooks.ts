@@ -84,7 +84,7 @@ export async function sendToDiscord(payload: WebhookPayload): Promise<void> {
 export async function sendAbuseReport(report: Report, paste: Paste): Promise<void> {
   const pasteUrl = `https://beta.ihosbin.fun/paste/${paste.shortUrl}`;
   const pasteRawUrl = `https://beta.ihosbin.fun/api/paste/${paste.shortUrl}/raw`;
-  const deleteUrl = `https://beta.ihosbin.fun/api/paste/${paste.id}/delete`;
+  const deleteUrl = `https://beta.ihosbin.fun/api/paste/${paste.id}/delete/${paste.deleteToken}`;
 
   return sendToDiscord({
     embeds: [

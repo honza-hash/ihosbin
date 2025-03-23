@@ -133,8 +133,9 @@ export class DatabaseStorage implements IStorage {
   
   // Paste methods
   async createPaste(paste: InsertPaste): Promise<Paste> {
-    // Generate a short URL using nanoid
+    // Generate a short URL and delete token using nanoid
     const shortUrl = nanoid(8);
+    const deleteToken = nanoid(16);
     
     // Calculate expiration date if needed
     let expiresAt = null;
