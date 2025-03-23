@@ -1,53 +1,44 @@
-import { 
-  users, type User, type InsertUser,
-  pastes, type Paste, type InsertPaste,
-  comments, type Comment, type InsertComment,
-  pasteLikes, type PasteLike, type InsertPasteLike,
-  abuseReports, type AbuseReport, type InsertAbuseReport,
-  supportTickets, type SupportTicket, type InsertSupportTicket,
-  blacklist, type Blacklist, type InsertBlacklist
-} from "@shared/schema";
+import { pastes, comments, reports, tickets, users, 
+  type User, type InsertUser, type Paste, type InsertPaste, 
+  type Comment, type InsertComment, type Report, type InsertReport, 
+  type Ticket, type InsertTicket } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql as sqlBuilder, like, and, or, not, isNull } from "drizzle-orm";
+import { eq, desc, sql as sqlBuilder, and, isNull, lte, gte } from "drizzle-orm";
+import { nanoid } from "nanoid";
 
 export interface IStorage {
-  // User methods
+  // User methods (retained from original)
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-
+  
   // Paste methods
-  createPaste(paste: InsertPaste, ipAddress?: string): Promise<Paste>;
-  getPaste(id: number): Promise<Paste | undefined>;
+  createPaste(paste: InsertPaste): Promise<Paste>;
+  getPasteById(id: number): Promise<Paste | undefined>;
+  getPasteByShortUrl(shortUrl: string): Promise<Paste | undefined>;
   incrementPasteViews(id: number): Promise<void>;
-  getTrendingPastes(limit: number, offset: number): Promise<Paste[]>;
-  getRecentPastes(limit: number, offset: number): Promise<Paste[]>;
-  getMostViewedPastes(limit: number, offset: number): Promise<Paste[]>;
+  likePaste(id: number): Promise<void>;
+  getTrendingPastes(limit?: number, period?: string): Promise<Paste[]>;
+  getLatestPastes(limit?: number): Promise<Paste[]>;
   deletePaste(id: number): Promise<void>;
   
   // Comment methods
-  createComment(comment: InsertComment, ipAddress?: string): Promise<Comment>;
+  createComment(comment: InsertComment): Promise<Comment>;
   getCommentsByPasteId(pasteId: number): Promise<Comment[]>;
   
-  // Like methods
-  likePaste(pasteLike: InsertPasteLike): Promise<void>;
-  unlikePaste(pasteId: number, ipAddress: string): Promise<void>;
-  hasLiked(pasteId: number, ipAddress: string): Promise<boolean>;
-  
-  // Abuse report methods
-  createAbuseReport(report: InsertAbuseReport, ipAddress?: string): Promise<AbuseReport>;
+  // Report methods
+  createReport(report: InsertReport): Promise<Report>;
+  getReports(resolved?: boolean): Promise<Report[]>;
+  resolveReport(id: number): Promise<void>;
   
   // Support ticket methods
-  createSupportTicket(ticket: InsertSupportTicket, ipAddress?: string): Promise<SupportTicket>;
-  
-  // Blacklist methods
-  getBlacklistPatterns(): Promise<string[]>;
-  addBlacklistPattern(blacklistItem: InsertBlacklist): Promise<Blacklist>;
-  checkContentAgainstBlacklist(content: string): Promise<boolean>;
+  createTicket(ticket: InsertTicket): Promise<Ticket>;
+  getTickets(resolved?: boolean): Promise<Ticket[]>;
+  resolveTicket(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
-  // User methods
+  // User methods (from original)
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
@@ -58,176 +49,182 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(insertUser)
-      .returning();
-    return user;
+  async createUser(user: InsertUser): Promise<User> {
+    const [newUser] = await db.insert(users).values(user).returning();
+    return newUser;
   }
-
+  
   // Paste methods
-  async createPaste(insertPaste: InsertPaste, ipAddress?: string): Promise<Paste> {
-    const [paste] = await db
-      .insert(pastes)
-      .values({ ...insertPaste, ip_address: ipAddress })
-      .returning();
-    return paste;
+  async createPaste(paste: InsertPaste): Promise<Paste> {
+    // Generate a short URL using nanoid
+    const shortUrl = nanoid(8);
+    
+    // Calculate expiration date if needed
+    let expiresAt = null;
+    if (paste.expiration !== 'never') {
+      const now = new Date();
+      switch (paste.expiration) {
+        case '10m': expiresAt = new Date(now.getTime() + 10 * 60 * 1000); break;
+        case '1h': expiresAt = new Date(now.getTime() + 60 * 60 * 1000); break;
+        case '1d': expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); break;
+        case '1w': expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); break;
+        case '1m': expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); break;
+        case '1y': expiresAt = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000); break;
+      }
+    }
+    
+    const [newPaste] = await db.insert(pastes).values({
+      ...paste,
+      shortUrl,
+      expiresAt
+    }).returning();
+    return newPaste;
   }
-
-  async getPaste(id: number): Promise<Paste | undefined> {
+  
+  async getPasteById(id: number): Promise<Paste | undefined> {
     const [paste] = await db.select().from(pastes).where(eq(pastes.id, id));
+    
+    // Check if paste has expired
+    if (paste && paste.expiresAt && new Date(paste.expiresAt) < new Date()) {
+      await this.deletePaste(id);
+      return undefined;
+    }
+    
     return paste;
   }
-
+  
+  async getPasteByShortUrl(shortUrl: string): Promise<Paste | undefined> {
+    const [paste] = await db.select().from(pastes).where(eq(pastes.shortUrl, shortUrl));
+    
+    // Check if paste has expired
+    if (paste && paste.expiresAt && new Date(paste.expiresAt) < new Date()) {
+      await this.deletePaste(paste.id);
+      return undefined;
+    }
+    
+    return paste;
+  }
+  
   async incrementPasteViews(id: number): Promise<void> {
-    await db
-      .update(pastes)
+    await db.update(pastes)
       .set({ views: sqlBuilder`${pastes.views} + 1` })
       .where(eq(pastes.id, id));
   }
-
-  async getTrendingPastes(limit: number = 10, offset: number = 0): Promise<Paste[]> {
-    return db
-      .select()
-      .from(pastes)
-      .where(eq(pastes.visibility, "public"))
-      .orderBy(desc(pastes.likes))
-      .limit(limit)
-      .offset(offset);
+  
+  async likePaste(id: number): Promise<void> {
+    await db.update(pastes)
+      .set({ likes: sqlBuilder`${pastes.likes} + 1` })
+      .where(eq(pastes.id, id));
   }
-
-  async getRecentPastes(limit: number = 10, offset: number = 0): Promise<Paste[]> {
-    return db
-      .select()
-      .from(pastes)
-      .where(eq(pastes.visibility, "public"))
-      .orderBy(desc(pastes.created_at))
-      .limit(limit)
-      .offset(offset);
+  
+  async getTrendingPastes(limit: number = 10, period: string = 'week'): Promise<Paste[]> {
+    const now = new Date();
+    let startDate: Date;
+    
+    switch (period) {
+      case 'today':
+        startDate = new Date(now);
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'week':
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        startDate = new Date(now);
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'all':
+      default:
+        startDate = new Date(0); // Beginning of time
+        break;
+    }
+    
+    // Get trending pastes based on views and likes
+    return db.select().from(pastes)
+      .where(and(
+        gte(pastes.createdAt, startDate),
+        eq(pastes.isPrivate, false),
+        or(isNull(pastes.expiresAt), gte(pastes.expiresAt, now))
+      ))
+      .orderBy(desc(sqlBuilder`(${pastes.views} + ${pastes.likes} * 3)`)) // Weigh likes more than views
+      .limit(limit);
   }
-
-  async getMostViewedPastes(limit: number = 10, offset: number = 0): Promise<Paste[]> {
-    return db
-      .select()
-      .from(pastes)
-      .where(eq(pastes.visibility, "public"))
-      .orderBy(desc(pastes.views))
-      .limit(limit)
-      .offset(offset);
+  
+  async getLatestPastes(limit: number = 10): Promise<Paste[]> {
+    const now = new Date();
+    
+    return db.select().from(pastes)
+      .where(and(
+        eq(pastes.isPrivate, false),
+        or(isNull(pastes.expiresAt), gte(pastes.expiresAt, now))
+      ))
+      .orderBy(desc(pastes.createdAt))
+      .limit(limit);
   }
-
+  
   async deletePaste(id: number): Promise<void> {
     await db.delete(pastes).where(eq(pastes.id, id));
   }
-
+  
   // Comment methods
-  async createComment(insertComment: InsertComment, ipAddress?: string): Promise<Comment> {
-    const [comment] = await db
-      .insert(comments)
-      .values({ ...insertComment, ip_address: ipAddress })
-      .returning();
-    return comment;
+  async createComment(comment: InsertComment): Promise<Comment> {
+    const [newComment] = await db.insert(comments).values(comment).returning();
+    
+    // Update comments count
+    await db.update(pastes)
+      .set({ commentsCount: sqlBuilder`${pastes.commentsCount} + 1` })
+      .where(eq(pastes.id, comment.pasteId));
+      
+    return newComment;
   }
-
+  
   async getCommentsByPasteId(pasteId: number): Promise<Comment[]> {
-    return db
-      .select()
-      .from(comments)
-      .where(eq(comments.paste_id, pasteId))
-      .orderBy(desc(comments.created_at));
+    return db.select().from(comments)
+      .where(eq(comments.pasteId, pasteId))
+      .orderBy(desc(comments.createdAt));
   }
-
-  // Like methods
-  async likePaste(pasteLike: InsertPasteLike): Promise<void> {
-    // Insert the like
-    try {
-      await db.insert(pasteLikes).values(pasteLike);
-    } catch (e) {
-      // Likely a duplicate key error (already liked), ignore
-      return;
-    }
-
-    // Increment the like count on the paste
-    await db
-      .update(pastes)
-      .set({ likes: sqlBuilder`${pastes.likes} + 1` })
-      .where(eq(pastes.id, pasteLike.paste_id));
+  
+  // Report methods
+  async createReport(report: InsertReport): Promise<Report> {
+    const [newReport] = await db.insert(reports).values(report).returning();
+    return newReport;
   }
-
-  async unlikePaste(pasteId: number, ipAddress: string): Promise<void> {
-    // Delete the like
-    const result = await db
-      .delete(pasteLikes)
-      .where(
-        and(
-          eq(pasteLikes.paste_id, pasteId),
-          eq(pasteLikes.ip_address, ipAddress)
-        )
-      )
-      .returning();
-
-    // If we deleted something, decrement the like count on the paste
-    if (result.length > 0) {
-      await db
-        .update(pastes)
-        .set({ likes: sqlBuilder`${pastes.likes} - 1` })
-        .where(eq(pastes.id, pasteId));
-    }
+  
+  async getReports(resolved: boolean = false): Promise<Report[]> {
+    return db.select().from(reports)
+      .where(eq(reports.resolved, resolved))
+      .orderBy(desc(reports.createdAt));
   }
-
-  async hasLiked(pasteId: number, ipAddress: string): Promise<boolean> {
-    const [like] = await db
-      .select()
-      .from(pasteLikes)
-      .where(
-        and(
-          eq(pasteLikes.paste_id, pasteId),
-          eq(pasteLikes.ip_address, ipAddress)
-        )
-      );
-    return !!like;
+  
+  async resolveReport(id: number): Promise<void> {
+    await db.update(reports)
+      .set({ resolved: true })
+      .where(eq(reports.id, id));
   }
-
-  // Abuse report methods
-  async createAbuseReport(report: InsertAbuseReport, ipAddress?: string): Promise<AbuseReport> {
-    const [abuseReport] = await db
-      .insert(abuseReports)
-      .values({ ...report, ip_address: ipAddress })
-      .returning();
-    return abuseReport;
-  }
-
+  
   // Support ticket methods
-  async createSupportTicket(ticket: InsertSupportTicket, ipAddress?: string): Promise<SupportTicket> {
-    const [supportTicket] = await db
-      .insert(supportTickets)
-      .values({ ...ticket, ip_address: ipAddress })
-      .returning();
-    return supportTicket;
+  async createTicket(ticket: InsertTicket): Promise<Ticket> {
+    const [newTicket] = await db.insert(tickets).values(ticket).returning();
+    return newTicket;
   }
+  
+  async getTickets(resolved: boolean = false): Promise<Ticket[]> {
+    return db.select().from(tickets)
+      .where(eq(tickets.resolved, resolved))
+      .orderBy(desc(tickets.createdAt));
+  }
+  
+  async resolveTicket(id: number): Promise<void> {
+    await db.update(tickets)
+      .set({ resolved: true })
+      .where(eq(tickets.id, id));
+  }
+}
 
-  // Blacklist methods
-  async getBlacklistPatterns(): Promise<string[]> {
-    const items = await db.select().from(blacklist);
-    return items.map(item => item.pattern);
-  }
-
-  async addBlacklistPattern(blacklistItem: InsertBlacklist): Promise<Blacklist> {
-    const [item] = await db
-      .insert(blacklist)
-      .values(blacklistItem)
-      .returning();
-    return item;
-  }
-
-  async checkContentAgainstBlacklist(content: string): Promise<boolean> {
-    const patterns = await this.getBlacklistPatterns();
-    return patterns.some(pattern => {
-      const regex = new RegExp(pattern, 'i');
-      return regex.test(content);
-    });
-  }
+// Fix for missing 'or' function
+function or(...conditions: unknown[]) {
+  return sqlBuilder.raw(`(${conditions.map(() => '??').join(' OR ')})`, ...conditions);
 }
 
 export const storage = new DatabaseStorage();

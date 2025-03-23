@@ -1,0 +1,15 @@
+malware
+exploit
+torrent
+warez
+cracked
+hack
+botnet
+phishing
+ddos
+rootkit
+keylogger
+trojan
+virus
+ransomware
+spyware

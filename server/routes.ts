@@ -1,292 +1,309 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertPasteSchema, insertCommentSchema, insertAbuseReportSchema, insertSupportTicketSchema } from "@shared/schema";
+import { checkBlacklist } from "./blacklist";
+import { sendAbuseReport, sendSupportTicket } from "./webhooks";
+import { z } from "zod";
+import { insertPasteSchema, insertCommentSchema, insertReportSchema, insertTicketSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
-import { sendAbuseReportToDiscord, sendSupportTicketToDiscord } from "./utils/discord";
-import { loadBlacklistFromFile, checkBlacklist } from "./utils/blacklist";
-
-// Helper to get client IP address
-const getClientIp = (req: Request): string => {
-  return req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || '';
-};
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Load blacklist from file if it exists
-  await loadBlacklistFromFile();
+  // Error handler middleware
+  const handleError = (err: unknown, res: Response) => {
+    console.error("API Error:", err);
+    
+    if (err instanceof ZodError) {
+      // Handle validation errors
+      const validationError = fromZodError(err);
+      return res.status(400).json({ 
+        message: 'Validation error', 
+        errors: validationError.details 
+      });
+    }
+    
+    // Default error
+    return res.status(500).json({ message: 'Internal server error' });
+  };
 
-  // Create a paste
-  app.post('/api/pastes', async (req: Request, res: Response) => {
+  // GET: Get trending pastes
+  app.get("/api/trending", async (req: Request, res: Response) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const period = (req.query.period as string) || 'week';
+      
+      const pastes = await storage.getTrendingPastes(limit, period);
+      res.json(pastes);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  // GET: Get latest pastes
+  app.get("/api/latest", async (req: Request, res: Response) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const pastes = await storage.getLatestPastes(limit);
+      res.json(pastes);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  // POST: Create a new paste
+  app.post("/api/paste", async (req: Request, res: Response) => {
     try {
       const pasteData = insertPasteSchema.parse(req.body);
       
-      // Check if content matches blacklist
-      const containsBlacklisted = await checkBlacklist(pasteData.content);
-      if (containsBlacklisted) {
-        return res.status(400).json({ 
-          message: 'Content contains blacklisted patterns. Please review our Terms of Service.' 
-        });
+      // Check content against blacklist
+      const blacklistCheck = checkBlacklist(pasteData.content);
+      if (blacklistCheck.blocked) {
+        return res.status(403).json({ message: blacklistCheck.reason });
       }
-
-      const clientIp = getClientIp(req);
-      const paste = await storage.createPaste(pasteData, clientIp);
       
+      const paste = await storage.createPaste(pasteData);
       res.status(201).json(paste);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        const validationError = fromZodError(error);
-        res.status(400).json({ message: validationError.message });
-      } else {
-        console.error('Error creating paste:', error);
-        res.status(500).json({ message: 'Could not create paste' });
-      }
+    } catch (err) {
+      handleError(err, res);
     }
   });
 
-  // Get a paste by ID
-  app.get('/api/pastes/:id', async (req: Request, res: Response) => {
+  // GET: Get a paste by ID
+  app.get("/api/paste/:id", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      
       if (isNaN(id)) {
-        return res.status(400).json({ message: 'Invalid ID format' });
+        // Try to get paste by short URL
+        const paste = await storage.getPasteByShortUrl(req.params.id);
+        if (!paste) {
+          return res.status(404).json({ message: "Paste not found" });
+        }
+        
+        // Increment view count
+        await storage.incrementPasteViews(paste.id);
+        return res.json(paste);
       }
       
-      const paste = await storage.getPaste(id);
+      const paste = await storage.getPasteById(id);
       if (!paste) {
-        return res.status(404).json({ message: 'Paste not found' });
+        return res.status(404).json({ message: "Paste not found" });
       }
       
       // Increment view count
-      await storage.incrementPasteViews(id);
-      
+      await storage.incrementPasteViews(paste.id);
       res.json(paste);
-    } catch (error) {
-      console.error('Error fetching paste:', error);
-      res.status(500).json({ message: 'Could not retrieve paste' });
+    } catch (err) {
+      handleError(err, res);
     }
   });
 
-  // Get trending pastes
-  app.get('/api/pastes/trending/:sort', async (req: Request, res: Response) => {
-    try {
-      const limit = parseInt(req.query.limit as string) || 10;
-      const offset = parseInt(req.query.offset as string) || 0;
-      const sort = req.params.sort || 'popular';
-      
-      let pastes;
-      switch (sort) {
-        case 'recent':
-          pastes = await storage.getRecentPastes(limit, offset);
-          break;
-        case 'views':
-          pastes = await storage.getMostViewedPastes(limit, offset);
-          break;
-        case 'popular':
-        default:
-          pastes = await storage.getTrendingPastes(limit, offset);
-          break;
-      }
-      
-      res.json(pastes);
-    } catch (error) {
-      console.error('Error fetching trending pastes:', error);
-      res.status(500).json({ message: 'Could not retrieve trending pastes' });
-    }
-  });
-
-  // Get comments for a paste
-  app.get('/api/pastes/:id/comments', async (req: Request, res: Response) => {
+  // GET: Get paste raw content
+  app.get("/api/paste/:id/raw", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      
+      let paste;
       if (isNaN(id)) {
-        return res.status(400).json({ message: 'Invalid ID format' });
+        // Try to get paste by short URL
+        paste = await storage.getPasteByShortUrl(req.params.id);
+      } else {
+        paste = await storage.getPasteById(id);
+      }
+      
+      if (!paste) {
+        return res.status(404).json({ message: "Paste not found" });
+      }
+      
+      // Set content type based on syntax
+      const contentTypes: { [key: string]: string } = {
+        javascript: 'application/javascript',
+        typescript: 'application/typescript',
+        json: 'application/json',
+        html: 'text/html',
+        css: 'text/css',
+        xml: 'application/xml',
+        markdown: 'text/markdown',
+        plaintext: 'text/plain',
+      };
+      
+      const contentType = contentTypes[paste.syntax] || 'text/plain';
+      
+      // Increment view count
+      await storage.incrementPasteViews(paste.id);
+      
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', `inline; filename="${paste.id}.${getFileExtension(paste.syntax)}"`);
+      res.send(paste.content);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  // GET: Download paste content
+  app.get("/api/paste/:id/download", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      let paste;
+      if (isNaN(id)) {
+        // Try to get paste by short URL
+        paste = await storage.getPasteByShortUrl(req.params.id);
+      } else {
+        paste = await storage.getPasteById(id);
+      }
+      
+      if (!paste) {
+        return res.status(404).json({ message: "Paste not found" });
+      }
+      
+      // Set content type for download
+      const contentType = 'text/plain';
+      const filename = paste.title 
+        ? `${paste.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${getFileExtension(paste.syntax)}` 
+        : `paste_${paste.id}.${getFileExtension(paste.syntax)}`;
+      
+      // Increment view count
+      await storage.incrementPasteViews(paste.id);
+      
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(paste.content);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  // POST: Like a paste
+  app.post("/api/paste/:id/like", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      const paste = await storage.getPasteById(id);
+      if (!paste) {
+        return res.status(404).json({ message: "Paste not found" });
+      }
+      
+      await storage.likePaste(id);
+      res.json({ success: true });
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  // GET: Get comments for a paste
+  app.get("/api/paste/:id/comments", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      const paste = await storage.getPasteById(id);
+      if (!paste) {
+        return res.status(404).json({ message: "Paste not found" });
       }
       
       const comments = await storage.getCommentsByPasteId(id);
       res.json(comments);
-    } catch (error) {
-      console.error('Error fetching comments:', error);
-      res.status(500).json({ message: 'Could not retrieve comments' });
+    } catch (err) {
+      handleError(err, res);
     }
   });
 
-  // Add a comment to a paste
-  app.post('/api/pastes/:id/comments', async (req: Request, res: Response) => {
+  // POST: Add a comment to a paste
+  app.post("/api/paste/:id/comments", async (req: Request, res: Response) => {
     try {
       const pasteId = parseInt(req.params.id);
-      if (isNaN(pasteId)) {
-        return res.status(400).json({ message: 'Invalid paste ID format' });
-      }
       
-      // Check if paste exists
-      const paste = await storage.getPaste(pasteId);
+      const paste = await storage.getPasteById(pasteId);
       if (!paste) {
-        return res.status(404).json({ message: 'Paste not found' });
+        return res.status(404).json({ message: "Paste not found" });
       }
       
-      const commentData = insertCommentSchema.parse({
+      // Parse comment data
+      const commentInput = insertCommentSchema.parse({
         ...req.body,
-        paste_id: pasteId
+        pasteId
       });
       
-      // Check if content matches blacklist
-      const containsBlacklisted = await checkBlacklist(commentData.content);
-      if (containsBlacklisted) {
-        return res.status(400).json({ 
-          message: 'Content contains blacklisted patterns. Please review our Terms of Service.' 
-        });
+      // Check comment content against blacklist
+      const blacklistCheck = checkBlacklist(commentInput.content);
+      if (blacklistCheck.blocked) {
+        return res.status(403).json({ message: blacklistCheck.reason });
       }
-
-      const clientIp = getClientIp(req);
-      const comment = await storage.createComment(commentData, clientIp);
       
+      const comment = await storage.createComment(commentInput);
       res.status(201).json(comment);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        const validationError = fromZodError(error);
-        res.status(400).json({ message: validationError.message });
-      } else {
-        console.error('Error creating comment:', error);
-        res.status(500).json({ message: 'Could not create comment' });
-      }
+    } catch (err) {
+      handleError(err, res);
     }
   });
 
-  // Like a paste
-  app.post('/api/pastes/:id/like', async (req: Request, res: Response) => {
+  // POST: Report abuse
+  app.post("/api/report", async (req: Request, res: Response) => {
     try {
-      const pasteId = parseInt(req.params.id);
-      if (isNaN(pasteId)) {
-        return res.status(400).json({ message: 'Invalid paste ID format' });
-      }
+      const reportData = insertReportSchema.parse(req.body);
       
-      // Check if paste exists
-      const paste = await storage.getPaste(pasteId);
+      // Verify paste exists
+      const paste = await storage.getPasteById(reportData.pasteId);
       if (!paste) {
-        return res.status(404).json({ message: 'Paste not found' });
+        return res.status(404).json({ message: "Paste not found" });
       }
       
-      const clientIp = getClientIp(req);
-      
-      // Check if already liked
-      const hasLiked = await storage.hasLiked(pasteId, clientIp);
-      
-      // Toggle like/unlike
-      if (hasLiked) {
-        await storage.unlikePaste(pasteId, clientIp);
-        res.json({ liked: false });
-      } else {
-        await storage.likePaste({ paste_id: pasteId, ip_address: clientIp });
-        res.json({ liked: true });
-      }
-    } catch (error) {
-      console.error('Error liking paste:', error);
-      res.status(500).json({ message: 'Could not process like action' });
-    }
-  });
-
-  // Check if user has liked a paste
-  app.get('/api/pastes/:id/like', async (req: Request, res: Response) => {
-    try {
-      const pasteId = parseInt(req.params.id);
-      if (isNaN(pasteId)) {
-        return res.status(400).json({ message: 'Invalid paste ID format' });
-      }
-      
-      const clientIp = getClientIp(req);
-      const hasLiked = await storage.hasLiked(pasteId, clientIp);
-      
-      res.json({ liked: hasLiked });
-    } catch (error) {
-      console.error('Error checking like status:', error);
-      res.status(500).json({ message: 'Could not check like status' });
-    }
-  });
-
-  // Submit an abuse report
-  app.post('/api/report-abuse', async (req: Request, res: Response) => {
-    try {
-      const reportData = insertAbuseReportSchema.parse(req.body);
-      
-      // Check if paste exists
-      const paste = await storage.getPaste(reportData.paste_id);
-      if (!paste) {
-        return res.status(404).json({ message: 'Paste not found' });
-      }
-      
-      const clientIp = getClientIp(req);
-      const report = await storage.createAbuseReport(reportData, clientIp);
+      // Create report
+      const report = await storage.createReport(reportData);
       
       // Send to Discord webhook
-      await sendAbuseReportToDiscord(report, paste);
+      await sendAbuseReport(report, paste);
       
-      res.status(201).json({ message: 'Abuse report submitted successfully' });
-    } catch (error) {
-      if (error instanceof ZodError) {
-        const validationError = fromZodError(error);
-        res.status(400).json({ message: validationError.message });
-      } else {
-        console.error('Error creating abuse report:', error);
-        res.status(500).json({ message: 'Could not submit abuse report' });
-      }
+      res.status(201).json({ message: "Report submitted successfully" });
+    } catch (err) {
+      handleError(err, res);
     }
   });
 
-  // Submit a support ticket
-  app.post('/api/support', async (req: Request, res: Response) => {
+  // POST: Submit support ticket
+  app.post("/api/support", async (req: Request, res: Response) => {
     try {
-      const ticketData = insertSupportTicketSchema.parse(req.body);
+      const ticketData = insertTicketSchema.parse(req.body);
       
-      // Check if content matches blacklist
-      const containsBlacklisted = await checkBlacklist(ticketData.message);
-      if (containsBlacklisted) {
-        return res.status(400).json({ 
-          message: 'Message contains blacklisted patterns. Please review our Terms of Service.' 
-        });
-      }
-
-      const clientIp = getClientIp(req);
-      const ticket = await storage.createSupportTicket(ticketData, clientIp);
+      // Create ticket
+      const ticket = await storage.createTicket(ticketData);
       
       // Send to Discord webhook
-      await sendSupportTicketToDiscord(ticket);
+      await sendSupportTicket(ticket);
       
-      res.status(201).json({ message: 'Support ticket submitted successfully' });
-    } catch (error) {
-      if (error instanceof ZodError) {
-        const validationError = fromZodError(error);
-        res.status(400).json({ message: validationError.message });
-      } else {
-        console.error('Error creating support ticket:', error);
-        res.status(500).json({ message: 'Could not submit support ticket' });
-      }
+      res.status(201).json({ message: "Support ticket submitted successfully" });
+    } catch (err) {
+      handleError(err, res);
     }
   });
 
-  // Raw paste content endpoint
-  app.get('/api/pastes/:id/raw', async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: 'Invalid ID format' });
-      }
-      
-      const paste = await storage.getPaste(id);
-      if (!paste) {
-        return res.status(404).json({ message: 'Paste not found' });
-      }
-      
-      // Increment view count
-      await storage.incrementPasteViews(id);
-      
-      res.set('Content-Type', 'text/plain');
-      res.send(paste.content);
-    } catch (error) {
-      console.error('Error fetching raw paste:', error);
-      res.status(500).json({ message: 'Could not retrieve paste' });
-    }
-  });
+  // Helper function to get file extension based on syntax
+  function getFileExtension(syntax: string): string {
+    const extensionMap: { [key: string]: string } = {
+      javascript: 'js',
+      typescript: 'ts',
+      python: 'py',
+      java: 'java',
+      csharp: 'cs',
+      html: 'html',
+      css: 'css',
+      php: 'php',
+      ruby: 'rb',
+      go: 'go',
+      rust: 'rs',
+      c: 'c',
+      cpp: 'cpp',
+      shell: 'sh',
+      sql: 'sql',
+      json: 'json',
+      yaml: 'yml',
+      markdown: 'md',
+      xml: 'xml',
+      plaintext: 'txt'
+    };
+    
+    return extensionMap[syntax] || 'txt';
+  }
 
   const httpServer = createServer(app);
   return httpServer;
