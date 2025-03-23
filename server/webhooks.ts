@@ -1,10 +1,10 @@
 import type { Report, Ticket, Paste } from "@shared/schema";
 
-// Discord webhook URL
-const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || ""; // Get webhook URL from env
+// Discord webhook URL - nastavený na Discord kanál ihosbin.fun moderace
+const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || "https://discord.com/api/webhooks/1353411162825297951/blTPjUr9QKafwd0ABzaTbGMD5pQiyM5jy9LjCCo7TTdhjcCraYtbZeFefKYNdOHA1IMZ";
 
-// Flag to enable/disable actual webhook sending (for development/testing)
-const ENABLE_WEBHOOK = process.env.NODE_ENV === 'production';
+// Vždy povolíme webhooks, bez ohledu na produkční nebo vývojové prostředí
+const ENABLE_WEBHOOK = true;
 
 interface WebhookPayload {
   content?: string;
@@ -60,41 +60,64 @@ export async function sendToDiscord(payload: WebhookPayload): Promise<void> {
  * Send abuse report to Discord
  */
 export async function sendAbuseReport(report: Report, paste: Paste): Promise<void> {
+  const pasteUrl = `https://beta.ihosbin.fun/paste/${paste.shortUrl}`;
+  const pasteRawUrl = `https://beta.ihosbin.fun/api/paste/${paste.shortUrl}/raw`;
+  
   return sendToDiscord({
     embeds: [
       {
-        title: "⚠️ Abuse Report",
-        color: 16711680, // Red
+        title: "⚠️ Nahlášení závadného obsahu",
+        description: `Byl nahlášen potenciálně závadný obsah na ihosbin.fun. Je potřeba prověřit a případně odstranit. [Zobrazit paste](${pasteUrl})`,
+        color: 16711680, // Červená
         fields: [
           {
-            name: "Paste ID",
+            name: "🆔 Paste ID",
             value: `${paste.id} (${paste.shortUrl})`,
             inline: true,
           },
           {
-            name: "Title",
-            value: paste.title || "Untitled",
+            name: "📋 Název",
+            value: paste.title || "Bez názvu",
             inline: true,
           },
           {
-            name: "Syntax",
+            name: "🔠 Jazyk",
             value: paste.syntax,
             inline: true,
           },
           {
-            name: "Reason",
-            value: report.reason,
+            name: "👀 Zobrazení",
+            value: paste.views.toString(),
+            inline: true,
           },
           {
-            name: "Content Preview",
-            value: paste.content.length > 500 
-              ? paste.content.substring(0, 500) + "..." 
-              : paste.content,
+            name: "❤️ Oblíbené",
+            value: paste.likes.toString(),
+            inline: true,
+          },
+          {
+            name: "⏱️ Vytvořeno",
+            value: new Date(paste.createdAt).toLocaleString(),
+            inline: true,
+          },
+          {
+            name: "⚠️ Důvod nahlášení",
+            value: report.reason || "Neuvedeno",
+          },
+          {
+            name: "🔍 Náhled obsahu",
+            value: "```" + (paste.content.length > 400 
+              ? paste.content.substring(0, 400) + "...\n[obsah zkrácen]" 
+              : paste.content) + "```",
           },
         ],
         timestamp: new Date().toISOString(),
+        footer: {
+          text: "ihosbin.fun | Moderační systém"
+        }
       },
     ],
+    content: `⚠️ **NOVÉ NAHLÁŠENÍ:** Byl nahlášen závadný obsah - [Zobrazit](${pasteUrl}) | [Raw verze](${pasteRawUrl})`
   });
 }
 
