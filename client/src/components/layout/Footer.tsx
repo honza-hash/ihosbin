@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Github, Twitter, MessageSquare } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 
 export default function Footer() {
   return (
@@ -49,13 +49,7 @@ export default function Footer() {
             <p className="text-slate-600 text-xs">Available at <a href="https://beta.ihosbin.fun" className="text-cyan-400 hover:underline">beta.ihosbin.fun</a></p>
           </div>
           <div className="flex space-x-4 mt-4 md:mt-0">
-            <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-white transition-colors">
-              <Github className="h-5 w-5" />
-            </a>
-            <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-white transition-colors">
-              <Twitter className="h-5 w-5" />
-            </a>
-            <a href="https://discord.com" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-white transition-colors">
+            <a href="https://discord.gg/vfuYG4jhcj" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-white transition-colors">
               <MessageSquare className="h-5 w-5" />
             </a>
           </div>
