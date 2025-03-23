@@ -9,7 +9,7 @@ const ENABLE_WEBHOOK = true;
 
 // Function to handle Discord interactions
 export async function handleDiscordInteraction(type: number, data: any): Promise<any> {
-  if (type === 3) { // Button interaction
+  if (type === 2) { // Button interaction
     const [action, id] = data.custom_id.split(':');
     
     if (action === 'delete_paste') {
@@ -17,12 +17,12 @@ export async function handleDiscordInteraction(type: number, data: any): Promise
       if (paste) {
         await storage.deletePaste(parseInt(id));
         await storage.addToBlacklist(paste.content);
-        return { content: `✅ Paste ${id} deleted and content blacklisted` };
+        return { content: `✅ Paste ${id} byl smazán a obsah byl přidán na blacklist` };
       }
     }
   }
   
-  return { content: "❌ Invalid action" };
+  return { content: "❌ Neplatná akce" };
 }
 
 interface WebhookPayload {
